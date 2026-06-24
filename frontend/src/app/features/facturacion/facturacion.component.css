@@ -1,0 +1,4 @@
+.estado-badge { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 500; }
+.estado-badge.pendiente { background: #fff3e0; color: #e65100; }
+.estado-badge.pagada { background: #e8f5e9; color: #2e7d32; }
+.estado-badge.anulada { background: #ffebee; color: #c62828; }

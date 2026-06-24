@@ -1,0 +1,212 @@
+<div class="page-card">
+  <div class="toolbar">
+    <h1>Facturación</h1>
+    <button mat-raised-button color="primary" (click)="openForm()"><mat-icon>add</mat-icon> Nueva Factura</button>
+  </div>
+  <table mat-table [dataSource]="data" class="mat-elevation-z2">
+    <ng-container matColumnDef="fecha_emision">
+      <th mat-header-cell *matHeaderCellDef>Fecha</th>
+      <td mat-cell *matCellDef="let r">{{ r.fecha_emision }}</td>
+    </ng-container>
+    <ng-container matColumnDef="tutor">
+      <th mat-header-cell *matHeaderCellDef>Tutor</th>
+      <td mat-cell *matCellDef="let r">{{ r.tutor_nombre }}</td>
+    </ng-container>
+    <ng-container matColumnDef="mascota">
+      <th mat-header-cell *matHeaderCellDef>Mascota</th>
+      <td mat-cell *matCellDef="let r">{{ r.mascota_nombre }}</td>
+    </ng-container>
+    <ng-container matColumnDef="total">
+      <th mat-header-cell *matHeaderCellDef>Total</th>
+      <td mat-cell *matCellDef="let r">${{ r.total }}</td>
+    </ng-container>
+    <ng-container matColumnDef="metodo_pago">
+      <th mat-header-cell *matHeaderCellDef>Pago</th>
+      <td mat-cell *matCellDef="let r">{{ labelMetodoPago(r.metodo_pago) }}</td>
+    </ng-container>
+    <ng-container matColumnDef="estado">
+      <th mat-header-cell *matHeaderCellDef>Estado</th>
+      <td mat-cell *matCellDef="let r">
+        <span class="estado-badge" [class.pagada]="r.estado === 'pagada'" [class.pendiente]="r.estado === 'pendiente'" [class.anulada]="r.estado === 'anulada'">
+          {{ labelEstado(r.estado) }}
+        </span>
+      </td>
+    </ng-container>
+    <ng-container matColumnDef="acciones">
+      <th mat-header-cell *matHeaderCellDef>Acciones</th>
+      <td mat-cell *matCellDef="let r">
+        <button mat-icon-button color="accent" (click)="verFactura(r)" matTooltip="Ver factura"><mat-icon>receipt</mat-icon></button>
+        <button mat-icon-button color="primary" (click)="openForm(r)" matTooltip="Editar"><mat-icon>edit</mat-icon></button>
+        <button mat-icon-button color="warn" (click)="eliminar(r)" matTooltip="Anular"><mat-icon>cancel</mat-icon></button>
+      </td>
+    </ng-container>
+    <tr mat-header-row *matHeaderRowDef="columns"></tr>
+    <tr mat-row *matRowDef="let row; columns: columns;"></tr>
+  </table>
+  <div *ngIf="data.length === 0" style="text-align: center; padding: 20px; color: #666;">No hay facturas registradas</div>
+</div>
+
+<div class="overlay" *ngIf="showForm" style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+  <mat-card style="width: 680px; padding: 28px; max-height: 90vh; overflow-y: auto;">
+    <h2 style="margin-top: 0; color: #1a3c6e;">
+      <mat-icon style="vertical-align: middle;">{{ editing ? 'edit' : 'add_circle' }}</mat-icon>
+      {{ editing ? 'Editar' : 'Nueva' }} Factura
+    </h2>
+
+    <div style="background: #f0f4ff; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+      <div class="form-row">
+        <mat-form-field class="full-width">
+          <mat-label>Tutor</mat-label>
+          <mat-select [(ngModel)]="form.tutor" required (selectionChange)="onTutorChange()">
+            <mat-option *ngFor="let t of tutores" [value]="t.id">{{ t.nombre }} - {{ t.rut }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+      <div class="form-row">
+        <mat-form-field class="full-width">
+          <mat-label>Mascota</mat-label>
+          <mat-select [(ngModel)]="form.mascota" required>
+            <mat-option *ngFor="let m of filteredMascotas" [value]="m.id">{{ m.nombre }} - {{ m.especie }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+      <div class="form-row">
+        <mat-form-field>
+          <mat-label>Sucursal</mat-label>
+          <mat-select [(ngModel)]="form.sucursal" required>
+            <mat-option *ngFor="let s of sucursales" [value]="s.id">{{ s.nombre }}</mat-option>
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field>
+          <mat-label>Método Pago</mat-label>
+          <mat-select [(ngModel)]="form.metodo_pago" required>
+            <mat-option value="efectivo">Efectivo</mat-option>
+            <mat-option value="tarjeta_credito">Tarjeta crédito</mat-option>
+            <mat-option value="tarjeta_debito">Tarjeta débito</mat-option>
+            <mat-option value="transferencia">Transferencia</mat-option>
+          </mat-select>
+        </mat-form-field>
+      </div>
+    </div>
+
+    <h3 style="color: #1a3c6e; display: flex; align-items: center; gap: 8px;"><mat-icon>list_alt</mat-icon> Servicios</h3>
+    <div *ngFor="let s of servicios; let i = index" class="form-row" style="align-items: center; background: #fafafa; padding: 8px; border-radius: 6px; margin-bottom: 6px;">
+      <mat-form-field style="flex: 2;">
+        <mat-label>Descripción</mat-label>
+        <input matInput [(ngModel)]="s.descripcion" (input)="calcularTotal()">
+      </mat-form-field>
+      <mat-form-field style="flex: 1;">
+        <mat-label>Valor</mat-label>
+        <input matInput [(ngModel)]="s.precio" type="number" (input)="calcularTotal()">
+      </mat-form-field>
+      <button mat-icon-button color="warn" (click)="removeServicio(i)" *ngIf="servicios.length > 1"><mat-icon>remove_circle</mat-icon></button>
+    </div>
+    <button mat-stroked-button (click)="addServicio()"><mat-icon>add</mat-icon> Agregar servicio</button>
+
+    <div style="margin-top: 16px; padding: 16px; background: #e8f5e9; border-radius: 8px; text-align: right;">
+      <div style="display: flex; justify-content: flex-end; gap: 40px; font-size: 15px;">
+        <span><strong>Subtotal:</strong> ${{ subtotal | number:'1.0-0' }}</span>
+        <span><strong>IVA (19%):</strong> ${{ iva | number:'1.0-0' }}</span>
+        <span style="font-size: 18px; color: #1a3c6e;"><strong>Total:</strong> ${{ total | number:'1.0-0' }}</span>
+      </div>
+    </div>
+
+    <div class="form-row" *ngIf="editing" style="margin-top: 16px;">
+      <mat-form-field class="full-width">
+        <mat-label>Estado</mat-label>
+        <mat-select [(ngModel)]="form.estado">
+          <mat-option value="pendiente">Pendiente</mat-option>
+          <mat-option value="pagada">Pagada</mat-option>
+          <mat-option value="anulada">Anulada</mat-option>
+        </mat-select>
+      </mat-form-field>
+    </div>
+    <div class="actions">
+      <button mat-button (click)="closeForm()">Cancelar</button>
+      <button mat-raised-button color="primary" (click)="save()" [disabled]="saving">
+        {{ saving ? 'Guardando...' : 'Guardar' }}
+      </button>
+    </div>
+  </mat-card>
+</div>
+
+<div class="overlay" *ngIf="showView" style="position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000;">
+  <mat-card style="width: 700px; padding: 0; max-height: 90vh; overflow-y: auto;">
+    <div id="factura-print" style="padding: 40px;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; padding-bottom: 16px; border-bottom: 2px solid #1a3c6e;">
+        <div>
+          <h2 style="margin: 0; color: #1a3c6e;">Veterinaria Los Andes</h2>
+          <p style="margin: 4px 0 0; color: #666; font-size: 13px;">{{ viewItem?.sucursal_nombre }}</p>
+        </div>
+        <div style="text-align: right;">
+          <h3 style="margin: 0; color: #1a3c6e;">FACTURA</h3>
+          <p style="margin: 4px 0 0; color: #666; font-size: 12px;">N° {{ viewItem?.id?.slice(0,8)?.toUpperCase() }}</p>
+          <p style="margin: 2px 0 0; color: #666; font-size: 12px;">{{ viewItem?.fecha_emision }}</p>
+        </div>
+      </div>
+
+      <div style="display: flex; gap: 40px; margin-bottom: 24px; padding: 16px; background: #f5f5f5; border-radius: 6px;">
+        <div>
+          <p style="margin: 0; font-size: 12px; color: #888;">TUTOR</p>
+          <p style="margin: 2px 0; font-weight: 500;">{{ viewItem?.tutor_nombre }}</p>
+        </div>
+        <div>
+          <p style="margin: 0; font-size: 12px; color: #888;">MASCOTA</p>
+          <p style="margin: 2px 0; font-weight: 500;">{{ viewItem?.mascota_nombre }}</p>
+        </div>
+        <div>
+          <p style="margin: 0; font-size: 12px; color: #888;">MÉTODO PAGO</p>
+          <p style="margin: 2px 0; font-weight: 500;">{{ labelMetodoPago(viewItem?.metodo_pago) }}</p>
+        </div>
+        <div>
+          <p style="margin: 0; font-size: 12px; color: #888;">ESTADO</p>
+          <span class="estado-badge" [class.pagada]="viewItem?.estado === 'pagada'" [class.pendiente]="viewItem?.estado === 'pendiente'" [class.anulada]="viewItem?.estado === 'anulada'">
+            {{ labelEstado(viewItem?.estado) }}
+          </span>
+        </div>
+      </div>
+
+      <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
+        <thead>
+          <tr style="background: #1a3c6e; color: white;">
+            <th style="padding: 10px 12px; text-align: left;">#</th>
+            <th style="padding: 10px 12px; text-align: left;">Servicio</th>
+            <th style="padding: 10px 12px; text-align: right;">Valor</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let s of viewServicios; let i = index" style="border-bottom: 1px solid #e0e0e0;">
+            <td style="padding: 10px 12px;">{{ i + 1 }}</td>
+            <td style="padding: 10px 12px;">{{ s.descripcion }}</td>
+            <td style="padding: 10px 12px; text-align: right;">${{ s.precio | number:'1.0-0' }}</td>
+          </tr>
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="2" style="padding: 10px 12px; text-align: right; font-weight: 500;">Subtotal</td>
+            <td style="padding: 10px 12px; text-align: right;">${{ viewSubtotal | number:'1.0-0' }}</td>
+          </tr>
+          <tr>
+            <td colspan="2" style="padding: 10px 12px; text-align: right; font-weight: 500;">IVA (19%)</td>
+            <td style="padding: 10px 12px; text-align: right;">${{ viewIva | number:'1.0-0' }}</td>
+          </tr>
+          <tr style="background: #e8f5e9;">
+            <td colspan="2" style="padding: 12px; text-align: right; font-weight: bold; font-size: 16px;">TOTAL</td>
+            <td style="padding: 12px; text-align: right; font-weight: bold; font-size: 16px; color: #1a3c6e;">${{ viewTotal | number:'1.0-0' }}</td>
+          </tr>
+        </tfoot>
+      </table>
+
+      <p style="text-align: center; color: #888; font-size: 11px; margin-top: 20px;">
+        Gracias por su preferencia · {{ viewItem?.sucursal_nombre }}
+      </p>
+    </div>
+
+    <div style="display: flex; gap: 8px; justify-content: flex-end; padding: 16px 24px; border-top: 1px solid #e0e0e0; background: #fafafa;">
+      <button mat-button (click)="closeView()">Cerrar</button>
+      <button mat-raised-button color="primary" (click)="imprimirFactura()">
+        <mat-icon>print</mat-icon> Descargar PDF
+      </button>
+    </div>
+  </mat-card>
+</div>

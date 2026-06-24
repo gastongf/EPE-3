@@ -1,0 +1,48 @@
+services:
+  db:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: vetdb
+      POSTGRES_USER: vetuser
+      POSTGRES_PASSWORD: vetpass
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  backend:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      DB_HOST: db
+      DB_NAME: vetdb
+      DB_USER: vetuser
+      DB_PASSWORD: vetpass
+      DB_PORT: '5432'
+      DJANGO_SETTINGS_MODULE: config.settings
+      EMAIL_BACKEND: django.core.mail.backends.smtp.EmailBackend
+      EMAIL_HOST: smtp.gmail.com
+      EMAIL_PORT: '587'
+      EMAIL_USE_TLS: 'True'
+      EMAIL_HOST_USER: gastonska@gmail.com
+      EMAIL_HOST_PASSWORD: imxr paao ghnq wbyg
+      DEFAULT_FROM_EMAIL: gastonska@gmail.com
+    depends_on:
+      db:
+        condition: service_started
+    volumes:
+      - .:/app
+
+  pgadmin:
+    image: dpage/pgadmin4
+    ports:
+      - "5050:80"
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@vetadmin.com
+      PGADMIN_DEFAULT_PASSWORD: admin123
+    depends_on:
+      - db
+
+volumes:
+  postgres_data:
